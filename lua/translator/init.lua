@@ -28,11 +28,11 @@ function M.translate()
 	-- 根据配置决定是否使用流式输出
 	if config.options.streaming then
 		api.stream_translate(text, function(chunk, source_lang)
-			ui.update_translation(bufnr, chunk, true, source_lang)
+			ui.update_translation(bufnr, chunk, source_lang, true)
 		end)
 	else
 		api.translate(text, function(translation, source_lang)
-			ui.update_translation(bufnr, translation, false, source_lang)
+			ui.update_translation(bufnr, translation, source_lang, false)
 		end)
 	end
 end
