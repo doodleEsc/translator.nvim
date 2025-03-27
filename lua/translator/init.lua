@@ -23,16 +23,17 @@ function M.translate()
 	end
 
 	-- 显示浮动窗口并展示原文
-	local bufnr, winnr = ui.create_floating_window(text)
+	-- local bufnr, winnr = ui.create_floating_window(text)
+	local ui_handler = ui.create_floating_window(text)
 
 	-- 根据配置决定是否使用流式输出
 	if config.options.streaming then
 		api.stream_translate(text, function(chunk, source_lang)
-			ui.update_translation(bufnr, chunk, source_lang, true)
+			ui.update_translation(ui_handler, chunk, source_lang, true)
 		end)
 	else
 		api.translate(text, function(translation, source_lang)
-			ui.update_translation(bufnr, translation, source_lang, false)
+			ui.update_translation(ui_handler, translation, source_lang, false)
 		end)
 	end
 end

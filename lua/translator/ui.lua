@@ -1,143 +1,171 @@
 local M = {}
 local config = require("translator.config")
+local Popup = require("nui.popup")
+local Split = require("nui.split")
+local Layout = require("nui.layout")
+local event = require("nui.utils.autocmd").event
 
--- 创建浮动窗口
+-- 创建翻译窗口
 function M.create_floating_window(source_text)
 	local width = config.options.window_width
-	local height = M.calculate_height(source_text, width)
+	local height = math.floor(vim.o.lines * 0.8) -- 固定高度为屏幕高度的80%
+	-- local height = config.options.window_width
 
-	-- 窗口总高度 = 原文高度 + 译文高度(初始为2) + 分隔线(1) + 边框(2) + 语言信息行(1)
-	local total_height = height + 2 + 1 + 2 + 1
+	-- 创建源文本窗口
+	local source_popup = Popup({
+		enter = false,
+		border = {
+			style = "rounded",
+			text = {
+				top = " Source ",
+				top_align = "center",
+			},
+		},
+		buf_options = {
+			modifiable = false,
+			readonly = true,
+			filetype = "translator-source",
+		},
+		win_options = {
+			wrap = true,
+			cursorline = false,
+			scrolloff = 1,
+		},
+	})
 
-	-- 计算窗口位置
-	local col = math.floor((vim.o.columns - width) / 2)
-	local row = math.floor((vim.o.lines - total_height) / 2)
+	-- 创建翻译文本窗口
+	local translation_popup = Popup({
+		enter = true,
+		border = {
+			style = "rounded",
+			text = {
+				top = " Translation ",
+				top_align = "center",
+			},
+		},
+		buf_options = {
+			modifiable = false,
+			readonly = true,
+			filetype = "translator",
+		},
+		win_options = {
+			wrap = true,
+			cursorline = false,
+			scrolloff = 1,
+		},
+	})
 
-	-- 创建缓冲区
-	local bufnr = vim.api.nvim_create_buf(false, true)
+	-- 创建布局
+	local layout = Layout(
+		{
+			position = "50%",
+			size = {
+				width = width,
+				height = height,
+			},
+		},
+		Layout.Box({
+			Layout.Box(source_popup, { size = "50%" }),
+			Layout.Box(translation_popup, { size = "50%" }),
+		}, { dir = "row" })
+	)
 
-	-- 设置窗口选项
-	local opts = {
-		relative = "editor",
-		width = width,
-		height = total_height,
-		col = col,
-		row = row,
-		style = "minimal",
-		border = "rounded",
+	-- 挂载布局
+	layout:mount()
+
+	-- 设置源文本内容
+	source_popup:map("n", "q", function()
+		layout:unmount()
+	end, { noremap = true })
+
+	source_popup:map("n", "<Esc>", function()
+		layout:unmount()
+	end, { noremap = true })
+
+	translation_popup:map("n", "q", function()
+		layout:unmount()
+	end, { noremap = true })
+
+	translation_popup:map("n", "<Esc>", function()
+		layout:unmount()
+	end, { noremap = true })
+
+	-- 填充源文本内容
+	-- 临时设置为可修改
+	vim.api.nvim_set_option_value("modifiable", true, { buf = source_popup.bufnr })
+	vim.api.nvim_set_option_value("readonly", false, { buf = source_popup.bufnr })
+	vim.api.nvim_buf_set_lines(source_popup.bufnr, 0, -1, false, vim.split(source_text, "\n"))
+	vim.api.nvim_set_option_value("modifiable", false, { buf = source_popup.bufnr })
+	vim.api.nvim_set_option_value("readonly", true, { buf = source_popup.bufnr })
+	-- 返回翻译窗口的缓冲区和窗口ID以及布局对象
+	return {
+		source_bufnr = source_popup.bufnr,
+		translation_bufnr = translation_popup.bufnr,
+		source_winnr = source_popup.winid,
+		translation_winnr = translation_popup.winid,
+		layout = layout,
 	}
-
-	-- 创建窗口
-	local winnr = vim.api.nvim_open_win(bufnr, false, opts)
-
-	-- -- 设置缓冲区选项
-	-- vim.api.nvim_buf_set_option(bufnr, "bufhidden", "wipe")
-	-- vim.api.nvim_buf_set_option(bufnr, "filetype", "translator")
-	--
-	-- -- 设置窗口选项
-	-- vim.api.nvim_win_set_option(winnr, "wrap", true)
-	-- vim.api.nvim_win_set_option(winnr, "cursorline", false)
-
-	-- 设置缓冲区选项
-	vim.bo[bufnr].bufhidden = "wipe"
-	vim.bo[bufnr].filetype = "translator"
-
-	-- 设置窗口选项
-	vim.wo[winnr].wrap = true
-	vim.wo[winnr].cursorline = false
-
-	-- 填充内容
-	local lines = {}
-	local source_lines = vim.split(source_text, "\n")
-
-	-- 添加原文
-	vim.list_extend(lines, source_lines)
-
-	-- 添加分隔线
-	table.insert(lines, string.rep("─", width))
-
-	-- 添加语言信息行
-	table.insert(lines, "Detecting language...")
-
-	-- 添加翻译占位符
-	table.insert(lines, "翻译中...")
-
-	vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
-
-	-- 设置分隔线高亮
-	local ns_id = vim.api.nvim_create_namespace("translator")
-	vim.api.nvim_buf_add_highlight(bufnr, ns_id, "Comment", #source_lines, 0, -1)
-
-	-- 设置语言信息行高亮
-	vim.api.nvim_buf_add_highlight(bufnr, ns_id, "Title", #source_lines + 1, 0, -1)
-
-	-- 记录原文行数，用于后续更新翻译
-	vim.api.nvim_buf_set_var(bufnr, "source_lines_count", #source_lines)
-
-	-- 添加关闭窗口的键位映射
-	vim.api.nvim_buf_set_keymap(bufnr, "n", "q", ":close<CR>", { noremap = true, silent = true })
-	vim.api.nvim_buf_set_keymap(bufnr, "n", "<Esc>", ":close<CR>", { noremap = true, silent = true })
-
-	return bufnr, winnr
 end
 
 -- 更新翻译内容
-function M.update_translation(bufnr, translation, header, is_streaming)
-	if not vim.api.nvim_buf_is_valid(bufnr) then
+function M.update_translation(ui_handles, translation, header, is_streaming)
+	local translation_bufnr = ui_handles.translation_bufnr
+
+	if not vim.api.nvim_buf_is_valid(translation_bufnr) then
 		return
 	end
 
-	local source_lines_count = vim.api.nvim_buf_get_var(bufnr, "source_lines_count")
-	local separator_line = source_lines_count
+	-- 临时设置为可修改
+	vim.api.nvim_set_option_value("modifiable", true, { buf = translation_bufnr })
+	vim.api.nvim_set_option_value("readonly", false, { buf = translation_bufnr })
 
-	-- 更新语言信息行
-	if header and header ~= "" then
-		vim.api.nvim_buf_set_lines(bufnr, separator_line + 1, separator_line + 2, false, { header })
-	end
+	-- -- 如果是第一次更新，清除初始内容并设置头部
+	-- if not ui_handles.initialized then
+	-- 	vim.api.nvim_buf_set_lines(translation_bufnr, 0, -1, false, {})
+	--
+	-- 	-- 添加语言信息行
+	-- 	if header and header ~= "" then
+	-- 		vim.api.nvim_buf_set_lines(translation_bufnr, 0, 0, false, { header, "" })
+	-- 	else
+	-- 		vim.api.nvim_buf_set_lines(translation_bufnr, 0, 0, false, { "Detecting language...", "" })
+	-- 	end
+	--
+	-- 	-- -- 设置语言信息行高亮
+	-- 	-- local ns_id = vim.api.nvim_create_namespace("translator")
+	-- 	-- vim.api.nvim_buf_add_highlight(translation_bufnr, ns_id, "Title", 0, 0, -1)
+	--
+	-- 	ui_handles.initialized = true
+	-- 	ui_handles.content = ""
+	-- elseif header and header ~= "" and header ~= ui_handles.last_header then
+	-- 	-- 更新语言信息行
+	-- 	vim.api.nvim_buf_set_lines(translation_bufnr, 0, 1, false, { header })
+	-- 	ui_handles.last_header = header
+	-- end
 
-	-- 清除旧的翻译内容
-	vim.api.nvim_buf_set_lines(bufnr, separator_line + 2, -1, false, {})
+	-- 追加新内容到缓冲区
+	ui_handles.content = (ui_handles.content or "") .. translation
 
-	-- 添加新的翻译内容
-	local translation_lines = vim.split(translation, "\n")
-	vim.api.nvim_buf_set_lines(bufnr, separator_line + 2, -1, false, translation_lines)
+	-- 替换内容部分（从第3行开始）
+	vim.api.nvim_buf_set_lines(translation_bufnr, 0, -1, false, vim.split(ui_handles.content, "\n"))
 
-	-- 如果是流式输出，需要调整窗口高度
-	if is_streaming then
-		local winnr = vim.fn.bufwinid(bufnr)
-		if winnr ~= -1 then
-			local width = config.options.window_width
-			local source_height = M.calculate_height(
-				table.concat(vim.api.nvim_buf_get_lines(bufnr, 0, source_lines_count, false), "\n"),
-				width
-			)
-			local translation_height = M.calculate_height(translation, width)
+	-- 恢复为只读
+	vim.api.nvim_set_option_value("modifiable", false, { buf = translation_bufnr })
+	vim.api.nvim_set_option_value("readonly", true, { buf = translation_bufnr })
 
-			-- 窗口总高度 = 原文高度 + 译文高度 + 分隔线(1) + 边框(2) + 语言信息行(1)
-			local total_height = source_height + translation_height + 1 + 2 + (header ~= "" and 1 or 0)
-
-			-- 更新窗口高度
-			local col = math.floor((vim.o.columns - width) / 2)
-			local row = math.floor((vim.o.lines - total_height) / 2)
-
-			vim.api.nvim_win_set_config(winnr, {
-				relative = "editor",
-				width = width,
-				height = total_height,
-				col = col,
-				row = row,
-			})
-		end
+	-- 如果是流式输出，滚动到底部
+	if is_streaming and ui_handles.translation_winnr then
+		local line_count = vim.api.nvim_buf_line_count(translation_bufnr)
+		vim.api.nvim_win_set_cursor(ui_handles.translation_winnr, { line_count, 0 })
 	end
 end
 
--- 计算文本在给定宽度下的高度
+-- 不再需要计算高度的函数，因为我们使用固定高度和滚动条
 function M.calculate_height(text, width)
+	-- 为了兼容性保留此函数，但不再使用其计算结果
 	local lines = vim.split(text, "\n")
 	local height = 0
 
 	for _, line in ipairs(lines) do
-		-- 计算每行文本在给定宽度下占用的行数
 		local line_length = vim.fn.strdisplaywidth(line)
 		local line_height = math.ceil(line_length / width)
 		height = height + math.max(1, line_height)

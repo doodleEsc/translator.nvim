@@ -163,7 +163,7 @@ function M.stream_translate(text, callback)
 		local url = config.options.base_url .. "/chat/completions"
 		local headers = get_headers()
 
-		local translation_buffer = ""
+		-- local translation_buffer = ""
 
 		curl.post(url, {
 			headers = headers,
@@ -201,8 +201,8 @@ function M.stream_translate(text, callback)
 								then
 									local content = result.choices[1].delta.content
 									if content then
-										translation_buffer = translation_buffer .. content
-										callback(translation_buffer, source_lang_full)
+										-- translation_buffer = translation_buffer .. content
+										callback(content, source_lang_full)
 									end
 								end
 							end
