@@ -3,30 +3,42 @@ local api = require("translator.api")
 local ui = require("translator.ui")
 local config = require("translator.config")
 
+---Setup the translator plugin with the given options
+---@param opts table|nil Configuration options for the plugin
+---@return nil
 function M.setup(opts)
 	config.setup(opts)
-	-- 创建用户命令，仅在 visual 模式下可用
+	-- Create user command, only available in visual mode
 	vim.api.nvim_create_user_command("Translate", function()
 		require("translator").translate()
 	end, { range = true })
 
-	-- 设置默认键位映射，仅针对 visual 模式
-	vim.api.nvim_set_keymap("v", "<leader>ts", ":Translate<CR>", { noremap = true, silent = true })
+	-- Set default keymaps for visual mode
+	if config.options.keymaps.enable then
+		vim.api.nvim_set_keymap(
+			"v",
+			config.options.keymaps.translate,
+			":Translate<CR>",
+			{ noremap = true, silent = true }
+		)
+	end
 end
 
+---Translate the selected text using the configured translation engine
+---This function handles both streaming and non-streaming translation modes
+---@return nil
 function M.translate()
-	-- 获取选中的文本
+	-- Get the selected text
 	local text = M.get_visual_selection()
 	if not text or text == "" then
 		vim.notify("No text selected", vim.log.levels.ERROR)
 		return
 	end
 
-	-- 显示浮动窗口并展示原文
-	-- local bufnr, winnr = ui.create_floating_window(text)
+	-- Show floating window with source text
 	local ui_handler = ui.create_floating_window(text)
 
-	-- 根据配置决定是否使用流式输出
+	-- Use streaming or regular translation based on configuration
 	if config.options.streaming then
 		api.stream_translate(text, function(chunk, source_lang)
 			ui.update_translation(ui_handler, chunk, source_lang, true)
@@ -38,12 +50,14 @@ function M.translate()
 	end
 end
 
--- 获取视觉模式下选中的文本
+---Get the text selected in visual mode
+---Handles both regular visual selection and V-LINE mode
+---@return string selected_text The text that was selected in visual mode
 function M.get_visual_selection()
 	local _, start_line, start_col, _ = unpack(vim.fn.getpos("'<"))
 	local _, end_line, end_col, _ = unpack(vim.fn.getpos("'>"))
 
-	-- 处理选择模式是 V-LINE 的情况
+	-- Handle V-LINE mode selection
 	if start_line == end_line and start_col == end_col then
 		local line = vim.fn.getline(".")
 		return line
@@ -55,7 +69,7 @@ function M.get_visual_selection()
 		return ""
 	end
 
-	-- 处理第一行和最后一行的部分选择
+	-- Handle partial selection of first and last lines
 	lines[1] = string.sub(lines[1], start_col)
 	lines[#lines] = string.sub(lines[#lines], 1, end_col)
 
