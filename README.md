@@ -1,18 +1,18 @@
-# 🌐 translator.nvim
+# translator.nvim
 
-A powerful AI-powered translation plugin, leveraging OpenAI's GPT models to provide high-quality translations with natural language understanding.
+A powerful AI-powered translator leveraging OpenAI's GPT models to provide high-quality translations with natural language understanding.
 
-## ✨ Features
+## Features
 
-- 🤖 Powered by OpenAI's GPT models for accurate and natural translations
-- 🌍 Support for multiple languages
-- 🔄 Automatic language detection
-- 💫 Real-time streaming translation
-- 🪟 Beautiful floating window UI
-- ⚡ Fast and efficient performance
-- ⚙️ Highly customizable
+- Powered by OpenAI's GPT models for accurate and natural translations.
+- Support for multiple languages.
+- Automatic language detection.
+- Real-time streaming translation.
+- Beautiful floating window UI.
+- Fast and efficient performance.
+- Highly customizable.
 
-## 📦 Installation
+## Installation
 
 Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 
@@ -32,7 +32,7 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 }
 ```
 
-## ⚙️ Configuration
+## Configuration
 
 Here's the default configuration with all available options:
 
@@ -78,7 +78,7 @@ require("translator").setup({
 })
 ````
 
-## 🗣️ Supported Languages
+## Supported Languages
 
 - English (en)
 - Chinese (zh)
@@ -94,7 +94,7 @@ require("translator").setup({
 - Arabic (ar)
 - Hindi (hi)
 
-## 🚀 Usage
+## Usage
 
 1. Set your OpenAI API key in your environment:
 
@@ -106,7 +106,7 @@ export OPENAI_API_KEY="your-api-key-here"
    - Press `<leader>ts` (default keybinding)
    - Run the `:Translate` command
 
-## ⌨️ Commands
+## Commands
 
 | Command      | Mode   | Description             |
 | ------------ | ------ | ----------------------- |
@@ -118,6 +118,6 @@ export OPENAI_API_KEY="your-api-key-here"
 | ------------ | ------ | ----------------------- |
 | `<leader>ts` | Visual | Translate selected text |
 
-## 📝 License
+## License
 
 MIT
