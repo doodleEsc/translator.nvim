@@ -1,6 +1,6 @@
 # 🌐 translator.nvim
 
-A powerful AI-powered translation plugin for Neovim, leveraging OpenAI's GPT models to provide high-quality translations with natural language understanding.
+A powerful AI-powered translation plugin, leveraging OpenAI's GPT models to provide high-quality translations with natural language understanding.
 
 ## ✨ Features
 
